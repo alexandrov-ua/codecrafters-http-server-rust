@@ -1,5 +1,12 @@
+mod http_request;
+use std::io::{BufRead, BufReader, Read, Write};
 #[allow(unused_imports)]
 use std::net::TcpListener;
+mod some_tests;
+
+extern crate strum;
+#[macro_use]
+extern crate strum_macros;
 
 fn main() {
     // You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -11,8 +18,18 @@ fn main() {
 
     for stream in listener.incoming() {
         match stream {
-            Ok(_stream) => {
-                println!("accepted new connection");
+            Ok(mut _stream) => {
+                let mut reader = BufReader::new(&_stream);
+                match http_request::HttpRequest::from_reader(&mut reader) {
+                    Ok(request) => {
+                        println!(">> {method} {path}", method = request.method, path = request.path);
+                        _stream.write_all(b"HTTP/1.1 200 OK\r\n").unwrap();
+                    }
+                    Err(e) => {
+                        println!("Failed to parse request: {}", e);
+                    }
+                }
+
             }
             Err(e) => {
                 println!("error: {}", e);
