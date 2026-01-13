@@ -23,7 +23,7 @@ fn main() {
                 match http_request::HttpRequest::from_reader(&mut reader) {
                     Ok(request) => {
                         println!(">> {method} {path}", method = request.method, path = request.path);
-                        _stream.write_all(b"HTTP/1.1 200 OK\r\n").unwrap();
+                        _stream.write_all(b"HTTP/1.1 200 OK\r\n\r\n").unwrap();
                     }
                     Err(e) => {
                         println!("Failed to parse request: {}", e);
