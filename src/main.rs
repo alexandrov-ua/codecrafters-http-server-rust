@@ -1,4 +1,5 @@
 mod http_request;
+mod http_response;
 use std::io::{BufRead, BufReader, Read, Write};
 #[allow(unused_imports)]
 use std::net::TcpListener;
@@ -23,7 +24,8 @@ fn main() {
                 match http_request::HttpRequest::from_reader(&mut reader) {
                     Ok(request) => {
                         println!(">> {method} {path}", method = request.method, path = request.path);
-                        _stream.write_all(b"HTTP/1.1 200 OK\r\n\r\n").unwrap();
+                        let response = http_response::HttpResponse::new(http_response::HttpStatusCode::OK);
+                        _stream.write_all(response.to_bytes().as_slice()).unwrap();
                     }
                     Err(e) => {
                         println!("Failed to parse request: {}", e);
