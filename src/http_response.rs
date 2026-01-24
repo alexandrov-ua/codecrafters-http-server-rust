@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io::{Read, BufRead, BufReader, Result};
 use std::str::FromStr;
 
-#[derive(Debug, Display, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum HttpStatusCode {
     OK = 200,
     BadRequest = 400,
@@ -10,6 +10,19 @@ pub enum HttpStatusCode {
     InternalServerError = 500,
     NotImplemented = 501,
     ServiceUnavailable = 503,
+}
+
+impl std::fmt::Display for HttpStatusCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HttpStatusCode::OK => write!(f, "OK"),
+            HttpStatusCode::BadRequest => write!(f, "Bad Request"),
+            HttpStatusCode::NotFound => write!(f, "Not Found"),
+            HttpStatusCode::InternalServerError => write!(f, "Internal Server Error"),
+            HttpStatusCode::NotImplemented => write!(f, "Not Implemented"),
+            HttpStatusCode::ServiceUnavailable => write!(f, "Service Unavailable"),
+        }
+    }
 }
     
 
@@ -48,7 +61,7 @@ impl HttpResponse {
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut response = format!("HTTP/1.1 {} {}\r\n", self.status_code as u16, self.status_code);
+        let mut response = format!("HTTP/1.1 {} {}\r\n", self.status_code as u16, self.status_code.to_string());
         for (key, value) in &self.headers {
             response.push_str(&format!("{}: {}\r\n", key, value));
         }
