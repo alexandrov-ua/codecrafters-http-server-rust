@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::io::{Read, BufRead, BufReader, Result};
+use std::net::TcpStream;
 use std::str::FromStr;
 
 #[derive(EnumString, Debug, PartialEq, Display)]
@@ -11,13 +12,13 @@ pub enum HttpMethod {
     OPTIONS,
 }
 
-pub struct HttpRequest<R: Read> {
+pub struct HttpRequest<'a>{
     pub method: HttpMethod,
     pub path: String,
     pub qury: String,
     pub http_version: String,
     pub headers: HashMap<String, String>,
-    pub content: HttpRequestContent<BufReader<R>>,
+    pub content: Box<HttpRequestContent<BufReader<& 'a mut dyn Read>>>,
     pub query_params: HashMap<String, String>,
 }
 
@@ -36,8 +37,8 @@ impl<T: BufRead> HttpRequestContent<T> {
     }
 }
 
-impl<R: BufRead> HttpRequest<R> {
-    pub fn from_reader(r: R) -> Result<HttpRequest<R>> {
+impl<'a> HttpRequest<'a> {
+    pub fn from_reader(r: &'a mut dyn Read) -> Result<HttpRequest> {
         let mut buf = BufReader::new(r);
         let mut first_line = String::new();
         let _ = buf.read_line(&mut first_line)?;
@@ -58,9 +59,9 @@ impl<R: BufRead> HttpRequest<R> {
             qury: query,
             http_version: http_version,
             headers: headers,
-            content: HttpRequestContent {
+            content: Box::new(HttpRequestContent {
                 body: Cell::new(buf),
-            },
+            }),
             query_params: query_params,
         })
     }
@@ -104,8 +105,8 @@ mod tests {
     #[test]
     fn from_reader_smoke() {
         let requessst_str = "GET /qwe?p=1 HTTP/1.1\r\nHost: 127.0.0.1:4221\r\nUser-Agent: curl/8.5.0\r\nAccept: */*\r\n\r\n";
-        let reader = Cursor::new(requessst_str.as_bytes());
-        let request = HttpRequest::from_reader(reader).unwrap();
+        let mut reader = Cursor::new(requessst_str.as_bytes());
+        let request = HttpRequest::from_reader(&mut reader).unwrap();
         assert_eq!(request.method, HttpMethod::GET);
         assert_eq!(request.path, "/qwe");
         assert_eq!(request.qury, "p=1");
@@ -117,8 +118,8 @@ mod tests {
     #[test]
     fn test_content_to_string() {
         let requessst_str = "POST /api/user HTTP/1.1\r\nHost: 127.0.0.1:4221\r\nUser-Agent: curl/8.5.0\r\nAccept: */*\r\nContent-Length: 22\r\nContent-Type: application/x-www-form-urlencoded\r\n\r\nname=admin&shoesize=12";
-        let reader = Cursor::new(requessst_str.as_bytes());
-        let request = HttpRequest::from_reader(reader).unwrap();
+        let mut reader = Cursor::new(requessst_str.as_bytes());
+        let request = HttpRequest::from_reader(&mut reader).unwrap();
         assert_eq!(request.method, HttpMethod::POST);
         assert_eq!(request.path, "/api/user");
         assert_eq!(request.qury, "");
@@ -135,8 +136,8 @@ mod tests {
     #[test]
     fn from_reader_qury_params() {
         let requessst_str = "GET /qwe?p=1&p1=wer&q HTTP/1.1\r\nHost: 127.0.0.1:4221\r\nUser-Agent: curl/8.5.0\r\nAccept: */*\r\n\r\n";
-        let reader = Cursor::new(requessst_str.as_bytes());
-        let request = HttpRequest::from_reader(reader).unwrap();
+        let mut reader = Cursor::new(requessst_str.as_bytes());
+        let request = HttpRequest::from_reader(&mut reader).unwrap();
         assert_eq!(request.method, HttpMethod::GET);
         assert_eq!(request.path, "/qwe");
         assert_eq!(request.qury, "p=1&p1=wer&q");

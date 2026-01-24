@@ -16,6 +16,7 @@ pub enum HttpStatusCode {
 pub struct HttpResponse {
     status_code: HttpStatusCode,
     headers: HashMap<String, String>,
+    body: Option<String>,
 }
 
 impl HttpResponse {
@@ -23,11 +24,27 @@ impl HttpResponse {
         HttpResponse {
             status_code,
             headers: HashMap::new(),
+            body: None,
         }
+    }
+
+    pub fn status_code(&self) -> HttpStatusCode {
+        self.status_code
     }
 
     pub fn set_header(&mut self, key: String, value: String) {
         self.headers.insert(key, value);
+    }
+
+    pub fn with_header(mut self, key: String, value: String) -> Self {
+        self.set_header(key, value);
+        self
+    }
+
+    pub fn with_body(mut self, body: &str) -> Self {
+        self.set_header("Content-Length".to_string(), body.len().to_string());
+        self.body = Some(body.to_string());
+        self
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -36,6 +53,16 @@ impl HttpResponse {
             response.push_str(&format!("{}: {}\r\n", key, value));
         }
         response.push_str("\r\n");
+        if let Some(body) = &self.body {
+            response.push_str(body);
+        }
         response.into_bytes()
     }
 }
+
+impl From<HttpResponse> for Vec<u8> {
+    fn from(response: HttpResponse) -> Self {
+        response.to_bytes()
+    }
+}
+
