@@ -56,6 +56,7 @@ impl HttpResponse {
 
     pub fn with_body(mut self, body: &str) -> Self {
         self.set_header("Content-Length".to_string(), body.len().to_string());
+        self.set_header("Content-Type".to_string(), "text/plain".to_string());
         self.body = Some(body.to_string());
         self
     }
