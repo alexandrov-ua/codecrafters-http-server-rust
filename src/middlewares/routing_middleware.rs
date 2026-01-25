@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use super::super::http_request::HttpRequest;
 use super::super::http_response::{HttpResponse, HttpStatusCode};
 use crate::url_matcher::UrlMatcher;
-use crate::middlewares::middleware::HttpMiddleware;
+use crate::middlewares::http_middleware::HttpMiddleware;
 use crate::http_context::HttpContext;
 
 pub struct RoutingMiddleware{
@@ -23,7 +23,7 @@ impl RoutingMiddleware {
 }
 
 impl HttpMiddleware for RoutingMiddleware {
-    fn handle(&self, request: &mut HttpRequest, next: &dyn HttpMiddleware) -> HttpResponse {
+    fn handle(&self, request: &mut HttpRequest, next: &dyn Fn(&mut HttpRequest) -> HttpResponse) -> HttpResponse {
         for (matcher, handler) in &self.routes {
             let (matched, params) = matcher.match_url(&request.path);
             if matched {

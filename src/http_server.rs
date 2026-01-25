@@ -1,28 +1,50 @@
+use crate::http_context::HttpContext;
 use crate::http_request::HttpRequest;
 use crate::http_response::HttpResponse;
 use crate::middlewares::dummy_middleware::DummyMiddleware;
-use crate::middlewares::middleware::HttpMiddleware;
-use crate::middlewares::routing_middleware::RoutingMiddleware;
+use crate::middlewares::http_middleware::HttpMiddleware;
 use crate::middlewares::logging_middleware::LoggingMiddleware;
-use std::cell::Cell;
+use crate::middlewares::routing_middleware::RoutingMiddleware;
+use crate::middlewares::{self, dummy_middleware};
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
-use crate::http_context::HttpContext;
 
 pub struct HttpServer {
-    routing: Cell<RoutingMiddleware>,
+    routing: Option<RoutingMiddleware>,
     middlewares: Vec<Box<dyn HttpMiddleware>>,
 }
 
 impl HttpServer {
     pub fn new() -> Self {
         HttpServer {
-            routing: Cell::new(RoutingMiddleware::new()),
+            routing: Some(RoutingMiddleware::new()),
             middlewares: Vec::new(),
         }
     }
 
+    fn middleware_chain<'a>(
+        &self,
+        mut iter: std::slice::Iter<'a, Box<dyn HttpMiddleware>>,
+        request: &mut HttpRequest,
+    ) -> HttpResponse {
+        if let Some(mw) = iter.next() {
+            let next_fn: Box<dyn Fn(&mut HttpRequest) -> HttpResponse> = Box::new(|req: &mut HttpRequest| {
+                self.middleware_chain(iter.clone(), req)
+            });
+            mw.handle(request, next_fn.as_ref())
+        } else {
+            HttpResponse::new(crate::http_response::HttpStatusCode::NotFound)
+        }
+    }
+
     pub fn run(&mut self, addr: &str) {
+        self.middlewares.push(Box::new(LoggingMiddleware::new()));
+        self.middlewares.push(Box::new(self.routing.take().unwrap()));
+        self.middlewares.push(Box::new(DummyMiddleware::new()));
+
+
         let listener = TcpListener::bind(addr).unwrap();
 
         for stream in listener.incoming() {
@@ -31,15 +53,10 @@ impl HttpServer {
                     let mut reader = BufReader::new(&_stream);
                     match HttpRequest::from_reader(&mut reader) {
                         Ok(mut request) => {
-                            println!(
-                                ">> {method} {path}",
-                                method = request.method,
-                                path = request.path
-                            );
-                            let response = self
-                                .routing
-                                .get_mut()
-                                .handle(&mut request, &DummyMiddleware::new());
+                            let mut iter = self.middlewares.iter();
+
+                            let response = self.middleware_chain(iter, &mut request);
+
                             _stream
                                 .write_all(Vec::<u8>::from(response).as_slice())
                                 .unwrap();
@@ -56,7 +73,11 @@ impl HttpServer {
         }
     }
 
-    pub fn add_route(&mut self, pattern: &str, handler: fn(&HttpRequest, &HttpContext) -> HttpResponse) {
-        self.routing.get_mut().add_route(pattern, handler);
+    pub fn add_route(
+        &mut self,
+        pattern: &str,
+        handler: fn(&HttpRequest, &HttpContext) -> HttpResponse,
+    ) {
+        self.routing.as_mut().unwrap().add_route(pattern, handler);
     }
 }

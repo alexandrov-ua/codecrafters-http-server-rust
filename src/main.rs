@@ -4,7 +4,7 @@ mod some_tests;
 mod http_server;
 mod url_matcher;
 mod middlewares{
-    pub mod middleware;
+    pub mod http_middleware;
     pub mod routing_middleware;
     pub mod dummy_middleware;
     pub mod logging_middleware;
