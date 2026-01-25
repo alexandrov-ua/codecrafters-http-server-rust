@@ -7,6 +7,7 @@ use crate::middlewares::logging_middleware::LoggingMiddleware;
 use std::cell::Cell;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
+use crate::http_context::HttpContext;
 
 pub struct HttpServer {
     routing: Cell<RoutingMiddleware>,
@@ -55,7 +56,7 @@ impl HttpServer {
         }
     }
 
-    pub fn add_route(&mut self, pattern: &str, handler: fn(&HttpRequest) -> HttpResponse) {
+    pub fn add_route(&mut self, pattern: &str, handler: fn(&HttpRequest, &HttpContext) -> HttpResponse) {
         self.routing.get_mut().add_route(pattern, handler);
     }
 }

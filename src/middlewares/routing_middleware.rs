@@ -3,9 +3,10 @@ use super::super::http_request::HttpRequest;
 use super::super::http_response::{HttpResponse, HttpStatusCode};
 use crate::url_matcher::UrlMatcher;
 use crate::middlewares::middleware::HttpMiddleware;
+use crate::http_context::HttpContext;
 
 pub struct RoutingMiddleware{
-    routes: HashMap<UrlMatcher, fn(&HttpRequest) -> HttpResponse>,
+    routes: HashMap<UrlMatcher, fn(&HttpRequest, &HttpContext) -> HttpResponse>,
 }
 
 impl RoutingMiddleware {
@@ -15,7 +16,7 @@ impl RoutingMiddleware {
         }
     }
 
-    pub fn add_route(&mut self, pattern: &str, handler: fn(&HttpRequest) -> HttpResponse) {
+    pub fn add_route(&mut self, pattern: &str, handler: fn(&HttpRequest, &HttpContext) -> HttpResponse) {
         let matcher = UrlMatcher::new(pattern);
         self.routes.insert(matcher, handler);
     }
@@ -26,7 +27,8 @@ impl HttpMiddleware for RoutingMiddleware {
         for (matcher, handler) in &self.routes {
             let (matched, params) = matcher.match_url(&request.path);
             if matched {
-                return handler(request);
+                let context = HttpContext::new_with_params(params);
+                return handler(request, &context);
             }
         }
         HttpResponse::new(HttpStatusCode::NotFound)

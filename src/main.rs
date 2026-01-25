@@ -9,6 +9,12 @@ mod middlewares{
     pub mod dummy_middleware;
     pub mod logging_middleware;
 }
+mod http_context;
+
+use crate::http_context::HttpContext;
+use crate::http_server::HttpServer;
+use crate::http_request::HttpRequest;
+use crate::http_response::HttpResponse;
 
 
 extern crate strum;
@@ -17,16 +23,21 @@ extern crate strum_macros;
 
 fn main() {
     let mut server = http_server::HttpServer::new();
-    server.add_route("/hello", |_: &http_request::HttpRequest| {
+    server.add_route("/hello", |_: &HttpRequest, _: &HttpContext| {
         http_response::HttpResponse::new(http_response::HttpStatusCode::OK)
         .with_body("Hello, World!")
     });
 
-    server.add_route("/", |_: &http_request::HttpRequest| {
+    server.add_route("/", |_: &HttpRequest, _: &HttpContext| {
         http_response::HttpResponse::new(http_response::HttpStatusCode::OK)
     });
 
-    server.add_route("/user-agent", |req: &http_request::HttpRequest| {
+    server.add_route("/echo/{message}", |_: &HttpRequest, context: &HttpContext| {
+        http_response::HttpResponse::new(http_response::HttpStatusCode::OK)
+        .with_body(context.get_path_param("message").unwrap_or(&"".to_string()).as_str())
+    });
+
+    server.add_route("/user-agent", |req: &HttpRequest, _: &HttpContext| {
         http_response::HttpResponse::new(http_response::HttpStatusCode::OK)
         .with_body(req.headers.get("User-Agent").unwrap_or(&"".to_string()).as_str())
     });

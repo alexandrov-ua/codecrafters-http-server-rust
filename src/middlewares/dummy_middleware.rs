@@ -10,7 +10,7 @@ impl DummyMiddleware {
     }
 }
 impl HttpMiddleware for DummyMiddleware {
-    fn handle(&self, request: &mut HttpRequest, next: &dyn HttpMiddleware) -> HttpResponse {
+    fn handle(&self, _: &mut HttpRequest, _: &dyn HttpMiddleware) -> HttpResponse {
         HttpResponse::new(crate::http_response::HttpStatusCode::NotFound)    
     }
 }
