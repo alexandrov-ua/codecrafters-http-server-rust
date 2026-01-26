@@ -3,12 +3,6 @@ pub struct HttpContext {
 }
 
 impl HttpContext {
-    pub fn new() -> Self {
-        HttpContext {
-            path_params: std::collections::HashMap::new(),
-        }
-    }
-
     pub fn new_with_params(params: std::collections::HashMap<String, String>) -> Self {
         HttpContext {
             path_params: params,

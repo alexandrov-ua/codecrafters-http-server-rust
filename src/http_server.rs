@@ -1,14 +1,10 @@
 use crate::http_context::HttpContext;
 use crate::http_request::HttpRequest;
 use crate::http_response::HttpResponse;
-use crate::middlewares::dummy_middleware::DummyMiddleware;
 use crate::middlewares::http_middleware::HttpMiddleware;
 use crate::middlewares::logging_middleware::LoggingMiddleware;
 use crate::middlewares::routing_middleware::RoutingMiddleware;
-use crate::middlewares::{self, dummy_middleware};
-use std::cell::{Cell, RefCell};
-use std::rc::Rc;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufReader, Write};
 use std::net::TcpListener;
 
 pub struct HttpServer {
@@ -42,7 +38,6 @@ impl HttpServer {
     pub fn run(&mut self, addr: &str) {
         self.middlewares.push(Box::new(LoggingMiddleware::new()));
         self.middlewares.push(Box::new(self.routing.take().unwrap()));
-        self.middlewares.push(Box::new(DummyMiddleware::new()));
 
 
         let listener = TcpListener::bind(addr).unwrap();
@@ -53,7 +48,7 @@ impl HttpServer {
                     let mut reader = BufReader::new(&_stream);
                     match HttpRequest::from_reader(&mut reader) {
                         Ok(mut request) => {
-                            let mut iter = self.middlewares.iter();
+                            let iter = self.middlewares.iter();
 
                             let response = self.middleware_chain(iter, &mut request);
 

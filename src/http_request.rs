@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::io::{Read, BufRead, BufReader, Result};
-use std::net::TcpStream;
 use std::str::FromStr;
 
 #[derive(EnumString, Debug, PartialEq, Display)]
@@ -12,6 +11,7 @@ pub enum HttpMethod {
     OPTIONS,
 }
 
+#[allow(dead_code)]
 pub struct HttpRequest<'a>{
     pub method: HttpMethod,
     pub path: String,
@@ -25,10 +25,12 @@ pub struct HttpRequest<'a>{
 use std::cell::Cell;
 
 
+#[allow(dead_code)]
 pub struct HttpRequestContent<T: BufRead> {
     body: Cell<T>
 }
 
+#[allow(dead_code)]
 impl<T: BufRead> HttpRequestContent<T> {
     pub fn to_string(&mut self) -> Result<String> {
         let mut buf = String::new();
@@ -38,7 +40,7 @@ impl<T: BufRead> HttpRequestContent<T> {
 }
 
 impl<'a> HttpRequest<'a> {
-    pub fn from_reader(r: &'a mut dyn Read) -> Result<HttpRequest> {
+    pub fn from_reader(r: &'a mut dyn Read) -> Result<HttpRequest<'a>> {
         let mut buf = BufReader::new(r);
         let mut first_line = String::new();
         let _ = buf.read_line(&mut first_line)?;

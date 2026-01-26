@@ -6,16 +6,12 @@ mod url_matcher;
 mod middlewares{
     pub mod http_middleware;
     pub mod routing_middleware;
-    pub mod dummy_middleware;
     pub mod logging_middleware;
 }
 mod http_context;
 
 use crate::http_context::HttpContext;
-use crate::http_server::HttpServer;
 use crate::http_request::HttpRequest;
-use crate::http_response::HttpResponse;
-
 
 extern crate strum;
 #[macro_use]

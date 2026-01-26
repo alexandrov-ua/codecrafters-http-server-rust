@@ -23,7 +23,7 @@ impl RoutingMiddleware {
 }
 
 impl HttpMiddleware for RoutingMiddleware {
-    fn handle(&self, request: &mut HttpRequest, next: &dyn Fn(&mut HttpRequest) -> HttpResponse) -> HttpResponse {
+    fn handle(&self, request: &mut HttpRequest, _: &dyn Fn(&mut HttpRequest) -> HttpResponse) -> HttpResponse {
         for (matcher, handler) in &self.routes {
             let (matched, params) = matcher.match_url(&request.path);
             if matched {
