@@ -7,14 +7,18 @@ use crate::middlewares::routing_middleware::RoutingMiddleware;
 use std::io::{BufReader, Write};
 use std::net::TcpListener;
 
-struct MiddlewareChain<'a> {
-    iter: std::cell::RefCell<Box<dyn std::iter::Iterator<Item = Box<dyn HttpMiddleware + 'a>> + 'a>>,
+struct MiddlewareChain<'a, T> 
+where T: std::iter::Iterator<Item = &'a Box<dyn HttpMiddleware>>,
+{
+    iter: std::cell::RefCell<T>,
 }
 
 
 
-impl<'a> MiddlewareChain<'a> {
-    fn new(iter: Box<dyn std::iter::Iterator<Item = Box<dyn HttpMiddleware + 'a>> + 'a>) -> Self {
+impl<'a, T> MiddlewareChain<'a, T>
+where T: std::iter::Iterator<Item = &'a Box<dyn HttpMiddleware>> ,
+{
+    fn new(iter: T) -> Self {
         MiddlewareChain {
             iter: std::cell::RefCell::new(iter),
         }
@@ -63,9 +67,10 @@ impl HttpServer {
     // }
 
     pub fn run(&mut self, addr: &str) {
-        self.middlewares.push(Box::new(LoggingMiddleware::new()));
         self.middlewares
             .push(Box::new(self.routing.take().unwrap()));
+        self.middlewares.push(Box::new(LoggingMiddleware::new()));
+        
 
         let listener = TcpListener::bind(addr).unwrap();
 
@@ -75,9 +80,10 @@ impl HttpServer {
                     let mut reader = BufReader::new(&_stream);
                     match HttpRequest::from_reader(&mut reader) {
                         Ok(mut request) => {
-                            let iter = self.middlewares.iter();
+                            let iter = self.middlewares.iter().rev();
 
-                            let response = MiddlewareChain::new(Box::new(iter as dyn std::iter::Iterator<Item = Box<dyn HttpMiddleware>>)).call(&mut request);
+                            let response = MiddlewareChain::new(iter)
+                                .call(&mut request);
 
                             _stream
                                 .write_all(Vec::<u8>::from(response).as_slice())
