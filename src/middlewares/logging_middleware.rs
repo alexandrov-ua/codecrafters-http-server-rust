@@ -1,8 +1,8 @@
-pub struct LoggingMiddleware;
 use crate::http_request::HttpRequest;
 use crate::http_response::HttpResponse;
 use crate::middlewares::http_middleware::HttpMiddleware;
 
+pub struct LoggingMiddleware;
 
 impl LoggingMiddleware {
     pub fn new() -> Self {

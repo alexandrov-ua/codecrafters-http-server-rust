@@ -19,6 +19,7 @@ extern crate strum_macros;
 
 fn main() {
     let mut server = http_server::HttpServer::new();
+
     server.add_route("/hello", |_: &HttpRequest, _: &HttpContext| {
         http_response::HttpResponse::new(http_response::HttpStatusCode::OK)
         .with_body("Hello, World!")
@@ -37,5 +38,15 @@ fn main() {
         http_response::HttpResponse::new(http_response::HttpStatusCode::OK)
         .with_body(req.headers.get("User-Agent").unwrap_or(&"".to_string()).as_str())
     });
+
+    server.add_route("/delay", |req: &HttpRequest, _: &HttpContext| {
+        let delay_seconds: u64 = req.query_params.get("sec")
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1);
+        std::thread::sleep(std::time::Duration::from_secs(delay_seconds));
+        http_response::HttpResponse::new(http_response::HttpStatusCode::OK)
+            .with_body("Delayed response")
+        });
+        
     server.run("127.0.0.1:4221");
 }

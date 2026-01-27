@@ -1,98 +1,78 @@
 use crate::http_context::HttpContext;
 use crate::http_request::HttpRequest;
 use crate::http_response::HttpResponse;
+use crate::middlewares;
 use crate::middlewares::http_middleware::HttpMiddleware;
 use crate::middlewares::logging_middleware::LoggingMiddleware;
 use crate::middlewares::routing_middleware::RoutingMiddleware;
 use std::io::{BufReader, Write};
 use std::net::TcpListener;
-
-struct MiddlewareChain<'a, T> 
-where T: std::iter::Iterator<Item = &'a Box<dyn HttpMiddleware>>,
-{
-    iter: std::cell::RefCell<T>,
-}
-
-
-
-impl<'a, T> MiddlewareChain<'a, T>
-where T: std::iter::Iterator<Item = &'a Box<dyn HttpMiddleware>> ,
-{
-    fn new(iter: T) -> Self {
-        MiddlewareChain {
-            iter: std::cell::RefCell::new(iter),
-        }
-    }
-
-    fn call(&self, request: &mut HttpRequest) -> HttpResponse {
-        let current_opt = {
-            let mut borrow_itter = self.iter.borrow_mut();
-            borrow_itter.next()
-        };
-
-        if let Some(current) = current_opt {
-            current.handle(request, &|req: &mut HttpRequest| self.call(req))
-        } else {
-            HttpResponse::new(crate::http_response::HttpStatusCode::NotFound)
-        }
-    }
-}
+use std::sync::Arc;
+use std::thread;
 
 pub struct HttpServer {
     routing: Option<RoutingMiddleware>,
-    middlewares: Vec<Box<dyn HttpMiddleware>>,
+    middlewares: Option<Vec<Box<dyn HttpMiddleware + Send + Sync>>>,
 }
 
 impl HttpServer {
     pub fn new() -> Self {
+        let mut middlewares: Vec<Box<dyn HttpMiddleware + Send + Sync>> = Vec::new();
+        middlewares.push(Box::new(LoggingMiddleware::new()));
         HttpServer {
             routing: Some(RoutingMiddleware::new()),
-            middlewares: Vec::new(),
+            middlewares: Some(middlewares),
         }
     }
 
-    // fn middleware_chain<'a>(
-    //     &self,
-    //     mut iter: std::slice::Iter<'a, Box<dyn HttpMiddleware>>,
-    //     request: &mut HttpRequest,
-    // ) -> HttpResponse {
-    //     if let Some(mw) = iter.next() {
-    //         let next_fn: Box<dyn Fn(&mut HttpRequest) -> HttpResponse> = Box::new(|req: &mut HttpRequest| {
-    //             self.middleware_chain(iter.clone(), req)
-    //         });
-    //         mw.handle(request, next_fn.as_ref())
-    //     } else {
-    //         HttpResponse::new(crate::http_response::HttpStatusCode::NotFound)
-    //     }
-    // }
+    fn create_middleware_chain(
+        vec: Vec<Box<dyn HttpMiddleware + Send + Sync>>,
+    ) -> Box<dyn Fn(&mut HttpRequest) -> HttpResponse + Send + Sync> {
+        let mut next_fn: Box<dyn Fn(&mut HttpRequest) -> HttpResponse + Send + Sync> =
+            Box::new(|_: &mut HttpRequest| {
+                HttpResponse::new(crate::http_response::HttpStatusCode::NotFound)
+            });
+        for mv in vec.into_iter() {
+            let current_next = next_fn;
+            next_fn = Box::new(move |req: &mut HttpRequest| mv.handle(req, current_next.as_ref()));
+        }
+        next_fn
+    }
+
+    fn handle_connection(
+        mut stream: std::net::TcpStream,
+        middlewares_chain: &dyn Fn(&mut HttpRequest) -> HttpResponse,
+    ) {
+        let mut buf_reader = BufReader::new(&mut stream);
+        let request = HttpRequest::from_reader(&mut buf_reader).unwrap();
+
+        let mut req = request;
+        let response = middlewares_chain(&mut req);
+
+        stream.write_all(&response.to_bytes()).unwrap();
+    }
 
     pub fn run(&mut self, addr: &str) {
         self.middlewares
-            .push(Box::new(self.routing.take().unwrap()));
-        self.middlewares.push(Box::new(LoggingMiddleware::new()));
-        
+            .as_mut()
+            .unwrap()
+            .insert(0, Box::new(self.routing.take().unwrap()));
+
+        let middlewares_chain: Arc<
+            Box<dyn Fn(&mut HttpRequest<'_>) -> HttpResponse + Send + Sync>,
+        > = Arc::new(HttpServer::create_middleware_chain(
+            self.middlewares.take().unwrap(),
+        ));
 
         let listener = TcpListener::bind(addr).unwrap();
 
         for stream in listener.incoming() {
             match stream {
                 Ok(mut _stream) => {
-                    let mut reader = BufReader::new(&_stream);
-                    match HttpRequest::from_reader(&mut reader) {
-                        Ok(mut request) => {
-                            let iter = self.middlewares.iter().rev();
-
-                            let response = MiddlewareChain::new(iter)
-                                .call(&mut request);
-
-                            _stream
-                                .write_all(Vec::<u8>::from(response).as_slice())
-                                .unwrap();
-                        }
-                        Err(e) => {
-                            println!("Failed to parse request: {}", e);
-                        }
-                    }
+                    let middlewares_chain = Arc::clone(&middlewares_chain);
+                    thread::spawn(move || {
+                        HttpServer::handle_connection(_stream, middlewares_chain.as_ref());
+                    });
                 }
                 Err(e) => {
                     println!("error: {}", e);
