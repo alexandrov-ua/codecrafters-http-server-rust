@@ -3,6 +3,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Copy)]
 pub enum HttpStatusCode {
     OK = 200,
+    Created = 201,
     BadRequest = 400,
     NotFound = 404,
     InternalServerError = 500,
@@ -14,6 +15,7 @@ impl std::fmt::Display for HttpStatusCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             HttpStatusCode::OK => write!(f, "OK"),
+            HttpStatusCode::Created => write!(f, "Created"),
             HttpStatusCode::BadRequest => write!(f, "Bad Request"),
             HttpStatusCode::NotFound => write!(f, "Not Found"),
             HttpStatusCode::InternalServerError => write!(f, "Internal Server Error"),

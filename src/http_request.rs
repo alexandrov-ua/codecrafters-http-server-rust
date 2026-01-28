@@ -23,23 +23,25 @@ pub struct HttpRequest<'a> {
 }
 
 use std::cell::Cell;
+use std::vec;
 
 #[allow(dead_code)]
 pub struct HttpRequestContent<T: BufRead> {
     body: Cell<T>,
+    content_length: usize,
 }
 
 #[allow(dead_code)]
 impl<T: BufRead> HttpRequestContent<T> {
     pub fn to_string(&mut self) -> Result<String> {
-        let mut buf = String::new();
-        self.body.get_mut().read_to_string(&mut buf)?;
-        Ok(buf)
+        let mut buf = vec![0; self.content_length];
+        self.body.get_mut().read_exact(&mut buf)?;
+        Ok(String::from_utf8(buf).unwrap_or_default())
     }
 
     pub fn to_bytes(&mut self) -> Result<Vec<u8>> {
-        let mut buf = Vec::new();
-        self.body.get_mut().read_to_end(&mut buf)?;
+        let mut buf = vec![0; self.content_length];
+        self.body.get_mut().read_exact(&mut buf)?;
         Ok(buf)
     }
 }
@@ -60,6 +62,12 @@ impl<'a> HttpRequest<'a> {
             line = String::new();
             read = buf.read_line(&mut line)?;
         }
+
+        let content_length: usize = headers.get("Content-Length")
+            .unwrap_or(&"0".to_string())
+            .parse()
+            .unwrap_or(0);
+
         Ok(HttpRequest {
             method: method,
             path: path,
@@ -68,6 +76,7 @@ impl<'a> HttpRequest<'a> {
             headers: headers,
             content: Box::new(HttpRequestContent {
                 body: Cell::new(buf),
+                content_length: content_length,
             }),
             query_params: query_params,
         })

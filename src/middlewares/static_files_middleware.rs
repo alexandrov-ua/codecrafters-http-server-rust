@@ -45,8 +45,8 @@ impl HttpMiddleware for StaticFilesMiddleware {
                 }
             }
             HttpMethod::POST => {
-                std::fs::write(&file_path, &request.content.to_bytes().unwrap()).unwrap_or(());
-                HttpResponse::new(crate::http_response::HttpStatusCode::OK)
+                std::fs::write(&file_path, &request.content.to_string().unwrap()).unwrap_or(());
+                HttpResponse::new(crate::http_response::HttpStatusCode::Created)
             }
             _ => return next(request),
         }
