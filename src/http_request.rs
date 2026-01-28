@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::{Read, BufRead, BufReader, Result};
+use std::io::{BufRead, BufReader, Read, Result};
 use std::str::FromStr;
 
 #[derive(EnumString, Debug, PartialEq, Display)]
@@ -12,22 +12,21 @@ pub enum HttpMethod {
 }
 
 #[allow(dead_code)]
-pub struct HttpRequest<'a>{
+pub struct HttpRequest<'a> {
     pub method: HttpMethod,
     pub path: String,
     pub qury: String,
     pub http_version: String,
     pub headers: HashMap<String, String>,
-    pub content: Box<HttpRequestContent<BufReader<& 'a mut dyn Read>>>,
+    pub content: Box<HttpRequestContent<BufReader<&'a mut dyn Read>>>,
     pub query_params: HashMap<String, String>,
 }
 
 use std::cell::Cell;
 
-
 #[allow(dead_code)]
 pub struct HttpRequestContent<T: BufRead> {
-    body: Cell<T>
+    body: Cell<T>,
 }
 
 #[allow(dead_code)]
@@ -35,6 +34,12 @@ impl<T: BufRead> HttpRequestContent<T> {
     pub fn to_string(&mut self) -> Result<String> {
         let mut buf = String::new();
         self.body.get_mut().read_to_string(&mut buf)?;
+        Ok(buf)
+    }
+
+    pub fn to_bytes(&mut self) -> Result<Vec<u8>> {
+        let mut buf = Vec::new();
+        self.body.get_mut().read_to_end(&mut buf)?;
         Ok(buf)
     }
 }
@@ -78,7 +83,9 @@ fn parse_query_string(query: &str) -> HashMap<String, String> {
     map
 }
 
-fn process_start_line(s: String) -> Result<(HttpMethod, String, String, String, HashMap<String, String>)> {
+fn process_start_line(
+    s: String,
+) -> Result<(HttpMethod, String, String, String, HashMap<String, String>)> {
     let mut parts = s.split(' ');
     let method = HttpMethod::from_str(parts.next().unwrap()).unwrap();
     let path_and_query = parts.next().unwrap();
@@ -129,7 +136,10 @@ mod tests {
         assert_eq!(request.headers["Host"], "127.0.0.1:4221");
         assert_eq!(request.headers["User-Agent"], "curl/8.5.0");
         assert_eq!(request.headers["Content-Length"], "22");
-        assert_eq!(request.headers["Content-Type"], "application/x-www-form-urlencoded");
+        assert_eq!(
+            request.headers["Content-Type"],
+            "application/x-www-form-urlencoded"
+        );
         let mut content = request.content;
         let content_str = content.to_string().unwrap();
         assert_eq!(content_str, "name=admin&shoesize=12");

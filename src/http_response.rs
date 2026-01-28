@@ -43,18 +43,18 @@ impl HttpResponse {
         self.status_code
     }
 
-    pub fn set_header(&mut self, key: String, value: String) {
-        self.headers.insert(key, value);
+    pub fn set_header(&mut self, key: &str, value: &str) {
+        self.headers.insert(key.to_string(), value.to_string());
     }
 
-    pub fn with_header(mut self, key: String, value: String) -> Self {
+    pub fn with_header(mut self, key: &str, value: &str) -> Self {
         self.set_header(key, value);
         self
     }
 
     pub fn with_body(mut self, body: &str) -> Self {
-        self.set_header("Content-Length".to_string(), body.len().to_string());
-        self.set_header("Content-Type".to_string(), "text/plain".to_string());
+        self.set_header("Content-Length", body.len().to_string().as_str());
+        self.set_header("Content-Type", "text/plain");
         self.body = Some(body.to_string());
         self
     }

@@ -7,11 +7,23 @@ mod middlewares{
     pub mod http_middleware;
     pub mod routing_middleware;
     pub mod logging_middleware;
+    pub mod static_files_middleware;
 }
 mod http_context;
 
+
 use crate::http_context::HttpContext;
 use crate::http_request::HttpRequest;
+use clap::Parser;
+
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[arg(short, long, default_value = ".")]
+    directory: String,
+}
+
 
 extern crate strum;
 #[macro_use]
@@ -48,5 +60,10 @@ fn main() {
             .with_body("Delayed response")
         });
         
+
+    server.use_middleware(Box::new(middlewares::logging_middleware::LoggingMiddleware::new()));
+
+    let args = Args::parse();
+    server.use_middleware(Box::new(middlewares::static_files_middleware::StaticFilesMiddleware::new("/files", &args.directory)));
     server.run("127.0.0.1:4221");
 }

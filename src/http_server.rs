@@ -1,9 +1,7 @@
 use crate::http_context::HttpContext;
 use crate::http_request::HttpRequest;
 use crate::http_response::HttpResponse;
-use crate::middlewares;
 use crate::middlewares::http_middleware::HttpMiddleware;
-use crate::middlewares::logging_middleware::LoggingMiddleware;
 use crate::middlewares::routing_middleware::RoutingMiddleware;
 use std::io::{BufReader, Write};
 use std::net::TcpListener;
@@ -18,7 +16,6 @@ pub struct HttpServer {
 impl HttpServer {
     pub fn new() -> Self {
         let mut middlewares: Vec<Box<dyn HttpMiddleware + Send + Sync>> = Vec::new();
-        middlewares.push(Box::new(LoggingMiddleware::new()));
         HttpServer {
             routing: Some(RoutingMiddleware::new()),
             middlewares: Some(middlewares),
@@ -87,5 +84,9 @@ impl HttpServer {
         handler: fn(&HttpRequest, &HttpContext) -> HttpResponse,
     ) {
         self.routing.as_mut().unwrap().add_route(pattern, handler);
+    }
+
+    pub fn use_middleware(&mut self, middleware: Box<dyn HttpMiddleware + Send + Sync>) {
+        self.middlewares.as_mut().unwrap().push(middleware);
     }
 }
