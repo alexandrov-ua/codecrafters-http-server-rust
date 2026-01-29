@@ -8,6 +8,7 @@ mod middlewares{
     pub mod routing_middleware;
     pub mod logging_middleware;
     pub mod static_files_middleware;
+    pub mod encoding_middleware;
 }
 mod http_context;
 
@@ -62,6 +63,7 @@ fn main() {
         
 
     server.use_middleware(Box::new(middlewares::logging_middleware::LoggingMiddleware::new()));
+    server.use_middleware(Box::new(middlewares::encoding_middleware::EncodingMiddleware::new()));
 
     let args = Args::parse();
     server.use_middleware(Box::new(middlewares::static_files_middleware::StaticFilesMiddleware::new("/files", &args.directory)));

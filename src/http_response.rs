@@ -29,7 +29,7 @@ impl std::fmt::Display for HttpStatusCode {
 pub struct HttpResponse {
     status_code: HttpStatusCode,
     headers: HashMap<String, String>,
-    body: Option<String>,
+    body: Option<Vec<u8>>,
 }
 
 impl HttpResponse {
@@ -49,28 +49,41 @@ impl HttpResponse {
         self.headers.insert(key.to_string(), value.to_string());
     }
 
+    pub fn get_header(&self, key: &str) -> Option<&String> {
+        self.headers.get(key)
+    }
+
     pub fn with_header(mut self, key: &str, value: &str) -> Self {
         self.set_header(key, value);
         self
     }
 
-    pub fn with_body(mut self, body: &str) -> Self {
+    pub fn with_body(self, body: &str) -> Self {
+        self.with_bytes_body(body.as_bytes().to_vec(), "text/plain")
+    }
+
+    pub fn get_body(&self) -> Option<&Vec<u8>> {
+        self.body.as_ref()
+    }
+
+    pub fn with_bytes_body(mut self, body: Vec<u8>, content_type: &str) -> Self {
         self.set_header("Content-Length", body.len().to_string().as_str());
-        self.set_header("Content-Type", "text/plain");
-        self.body = Some(body.to_string());
+        self.set_header("Content-Type", content_type);
+        self.body = Some(body);
         self
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut response = format!("HTTP/1.1 {} {}\r\n", self.status_code as u16, self.status_code.to_string());
+        let mut response_str = format!("HTTP/1.1 {} {}\r\n", self.status_code as u16, self.status_code.to_string());
         for (key, value) in &self.headers {
-            response.push_str(&format!("{}: {}\r\n", key, value));
+            response_str.push_str(&format!("{}: {}\r\n", key, value));
         }
-        response.push_str("\r\n");
+        response_str.push_str("\r\n");
+        let mut response = response_str.as_bytes().to_vec();
         if let Some(body) = &self.body {
-            response.push_str(body);
+            response.extend_from_slice(body);
         }
-        response.into_bytes()
+        response
     }
 }
 
