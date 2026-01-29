@@ -4,7 +4,6 @@ use crate::middlewares::http_middleware::HttpMiddleware;
 use crate::url_matcher::UrlMatcher;
 
 pub struct StaticFilesMiddleware {
-    base_url: String,
     base_path: String,
     matcher: UrlMatcher,
 }
@@ -13,7 +12,6 @@ impl StaticFilesMiddleware {
     pub fn new(base_url: &str, base_path: &str) -> Self {
         let pattern = format!("{}/{{file_path*}}", base_url);
         StaticFilesMiddleware {
-            base_url: base_url.to_string(),
             base_path: base_path.to_string(),
             matcher: UrlMatcher::new(&pattern),
         }

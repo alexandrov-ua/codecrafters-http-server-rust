@@ -15,7 +15,7 @@ pub struct HttpServer {
 
 impl HttpServer {
     pub fn new() -> Self {
-        let mut middlewares: Vec<Box<dyn HttpMiddleware + Send + Sync>> = Vec::new();
+        let middlewares: Vec<Box<dyn HttpMiddleware + Send + Sync>> = Vec::new();
         HttpServer {
             routing: Some(RoutingMiddleware::new()),
             middlewares: Some(middlewares),

@@ -10,17 +10,7 @@ pub struct EncodingMiddleware;
 
 impl EncodingMiddleware {
     pub fn new() -> Self {
-        EncodingMiddleware
-    }
-
-    pub fn encode(&self, data: &str) -> Vec<u8> {
-        // Example encoding logic (UTF-8)
-        data.as_bytes().to_vec()
-    }
-
-    pub fn decode(&self, data: &[u8]) -> String {
-        // Example decoding logic (UTF-8)
-        String::from_utf8_lossy(data).to_string()
+        EncodingMiddleware {}
     }
 }
 
