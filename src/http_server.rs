@@ -50,7 +50,10 @@ impl HttpServer {
             } else {
                 false
             };
-            let response = middlewares_chain(&mut req);
+            let mut response = middlewares_chain(&mut req);
+            if close_connection {
+                response = response.with_header("Connection", "close");
+            }
             stream.write_all(&response.to_bytes()).unwrap();
             stream.flush().unwrap();
             if close_connection {
