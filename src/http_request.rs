@@ -29,6 +29,7 @@ use std::vec;
 pub struct HttpRequestContent<T: BufRead> {
     body: Cell<T>,
     content_length: usize,
+    is_read: bool,
 }
 
 #[allow(dead_code)]
@@ -36,12 +37,14 @@ impl<T: BufRead> HttpRequestContent<T> {
     pub fn to_string(&mut self) -> Result<String> {
         let mut buf = vec![0; self.content_length];
         self.body.get_mut().read_exact(&mut buf)?;
+        self.is_read = true;
         Ok(String::from_utf8(buf).unwrap_or_default())
     }
 
     pub fn to_bytes(&mut self) -> Result<Vec<u8>> {
         let mut buf = vec![0; self.content_length];
         self.body.get_mut().read_exact(&mut buf)?;
+        self.is_read = true;
         Ok(buf)
     }
 }
@@ -51,6 +54,12 @@ impl<'a> HttpRequest<'a> {
         let mut buf = BufReader::new(r);
         let mut first_line = String::new();
         let _ = buf.read_line(&mut first_line)?;
+        if first_line.is_empty() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                "Empty request",
+            ));
+        }
         first_line = String::from(first_line.trim_end());
         let (method, path, query, http_version, query_params) = process_start_line(first_line)?;
         let mut headers: HashMap<String, String> = HashMap::new();
@@ -77,6 +86,7 @@ impl<'a> HttpRequest<'a> {
             content: Box::new(HttpRequestContent {
                 body: Cell::new(buf),
                 content_length: content_length,
+                is_read: false,
             }),
             query_params: query_params,
         })

@@ -40,13 +40,23 @@ impl HttpServer {
         mut stream: std::net::TcpStream,
         middlewares_chain: &dyn Fn(&mut HttpRequest) -> HttpResponse,
     ) {
-        let mut buf_reader = BufReader::new(&mut stream);
-        let request = HttpRequest::from_reader(&mut buf_reader).unwrap();
-
-        let mut req = request;
-        let response = middlewares_chain(&mut req);
-
-        stream.write_all(&response.to_bytes()).unwrap();
+        while let Ok(request) = HttpRequest::from_reader(&mut stream) {
+            let mut req = request;
+            let close_connection = if req.http_version != "HTTP/1.1"
+                || req.headers.get("Connection").map(|s| s.to_string())
+                    == Some("close".to_string())
+            {
+                true
+            } else {
+                false
+            };
+            let response = middlewares_chain(&mut req);
+            stream.write_all(&response.to_bytes()).unwrap();
+            stream.flush().unwrap();
+            if close_connection {
+                break;
+            }
+        }
     }
 
     pub fn run(&mut self, addr: &str) {
