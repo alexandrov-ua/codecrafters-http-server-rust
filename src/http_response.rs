@@ -35,7 +35,6 @@ pub struct HttpResponse {
 impl HttpResponse {
     pub fn new(status_code: HttpStatusCode) -> Self {
         let mut headers = HashMap::new();
-        headers.insert("Server".to_string(), "Rust HTTP Server".to_string());
         headers.insert("Content-Length".to_string(), "0".to_string());
         HttpResponse {
             status_code,
