@@ -1,9 +1,8 @@
 use crate::http_context::HttpContext;
 use crate::http_request::HttpRequest;
 use crate::http_response::HttpResponse;
-use crate::middlewares::http_middleware::HttpMiddleware;
-use crate::middlewares::routing_middleware::RoutingMiddleware;
-use std::io::{BufReader, Write};
+use crate::middlewares::{HttpMiddleware, RoutingMiddleware};
+use std::io::{Write};
 use std::net::TcpListener;
 use std::sync::Arc;
 use std::thread;
