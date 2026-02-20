@@ -74,7 +74,8 @@ impl HttpServer {
         ));
 
         let listener = TcpListener::bind(addr).unwrap();
-
+        println!("Server running on {}", addr);
+        
         for stream in listener.incoming() {
             match stream {
                 Ok(mut _stream) => {

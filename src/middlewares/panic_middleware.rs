@@ -1,7 +1,4 @@
 use std::panic::{self,AssertUnwindSafe};
-
-
-
 use crate::http_request::HttpRequest;
 use crate::http_response::{HttpResponse, HttpStatusCode};
 use crate::middlewares::http_middleware::HttpMiddleware;
