@@ -1,7 +1,6 @@
 mod http_request;
 mod http_response;
 mod http_server;
-mod some_tests;
 mod url_matcher;
 mod middlewares;
 mod http_context;
