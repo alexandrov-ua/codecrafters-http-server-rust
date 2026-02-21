@@ -6,10 +6,10 @@ mod middlewares;
 mod url_matcher;
 
 use crate::http_context::HttpContext;
-use crate::http_request::{HttpRequest, HttpMethod};
+use crate::http_request::{HttpRequest};
 use crate::http_response::{HttpResponse, HttpStatusCode};
 use crate::middlewares::{
-    EncodingMiddleware, LoggingMiddleware, PanicMiddleware, StaticFilesMiddleware,
+    EncodingMiddleware, LoggingMiddleware, PanicMiddleware, StaticFilesMiddleware, StatisticMiddleware,
 };
 use clap::Parser;
 
@@ -27,16 +27,15 @@ extern crate strum_macros;
 fn main() {
     let mut server = http_server::HttpServer::new();
 
-    server.add_route(HttpMethod::GET, "/hello", |_: &mut HttpRequest, _: &HttpContext| {
+    server.get("/hello", |_: &mut HttpRequest, _: &HttpContext| {
         HttpResponse::new(HttpStatusCode::OK).with_body("Hello, World!")
     });
 
-    server.add_route(HttpMethod::GET, "/", |_: &mut HttpRequest, _: &HttpContext| {
+    server.get("/", |_: &mut HttpRequest, _: &HttpContext| {
         HttpResponse::new(HttpStatusCode::OK)
     });
 
-    server.add_route(
-        HttpMethod::GET,
+    server.get(
         "/echo/{message}",
         |_: &mut HttpRequest, context: &HttpContext| {
             HttpResponse::new(HttpStatusCode::OK).with_body(
@@ -48,24 +47,17 @@ fn main() {
         },
     );
 
-    server.add_route(
-        HttpMethod::GET,
-        "/user-agent",
-        |req: &mut HttpRequest, _: &HttpContext| {
-            HttpResponse::new(HttpStatusCode::OK).with_body(
-                req.headers
-                    .get("User-Agent")
-                    .unwrap_or(&"".to_string())
-                    .as_str(),
-            )
-        },
-    );
+    server.get("/user-agent", |req: &mut HttpRequest, _: &HttpContext| {
+        HttpResponse::new(HttpStatusCode::OK).with_body(
+            req.headers
+                .get("User-Agent")
+                .unwrap_or(&"".to_string())
+                .as_str(),
+        )
+    });
 
-    server.add_route(
-        HttpMethod::GET,
-        "/delay",
-        |req: &mut HttpRequest, _: &HttpContext| {
-            let delay_seconds: u64 = req
+    server.get("/delay", |req: &mut HttpRequest, _: &HttpContext| {
+        let delay_seconds: u64 = req
             .query_params
             .get("sec")
             .and_then(|s| s.parse().ok())
@@ -74,19 +66,12 @@ fn main() {
         HttpResponse::new(HttpStatusCode::OK).with_body("Delayed response")
     });
 
-    server.add_route(
-        HttpMethod::GET,
-        "/panic",
-        |_: &mut HttpRequest, _: &HttpContext| {
-            panic!("Intentional panic for testing");
-        },
-    );
+    server.get("/panic", |_: &mut HttpRequest, _: &HttpContext| {
+        panic!("Intentional panic for testing");
+    });
 
-    server.add_route(
-        HttpMethod::GET,
-        "/divide",
-        |req: &mut HttpRequest, _: &HttpContext| {
-            let a = req
+    server.get("/divide", |req: &mut HttpRequest, _: &HttpContext| {
+        let a = req
             .query_params
             .get("a")
             .and_then(|s| s.parse::<i32>().ok())
@@ -100,14 +85,12 @@ fn main() {
         HttpResponse::new(HttpStatusCode::OK).with_body(&res.to_string())
     });
 
-    server.add_route(
-        HttpMethod::POST,
-        "/echo-body",
-        |req: &mut HttpRequest, _: &HttpContext| {
-            HttpResponse::new(HttpStatusCode::OK).with_body(req.content.to_string().unwrap_or("".to_string()).as_str())
-        },
-    );
+    server.post("/echo-body", |req: &mut HttpRequest, _: &HttpContext| {
+        HttpResponse::new(HttpStatusCode::OK)
+            .with_body(req.content.to_string().unwrap_or("".to_string()).as_str())
+    });
 
+    server.use_middleware(Box::new(StatisticMiddleware::new("/stats")));
     server.use_middleware(Box::new(PanicMiddleware::new()));
     server.use_middleware(Box::new(LoggingMiddleware::new()));
     server.use_middleware(Box::new(EncodingMiddleware::new()));

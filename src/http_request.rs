@@ -10,7 +10,7 @@ pub enum HttpMethod {
     DELETE,
     OPTIONS,
 }
-
+#[allow(dead_code)]
 pub struct HttpRequest<'a> {
     pub method: HttpMethod,
     pub path: String,

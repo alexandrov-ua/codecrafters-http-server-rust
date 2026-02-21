@@ -104,6 +104,14 @@ impl HttpServer {
         self.routing.as_mut().unwrap().add_route(MatchMethod::from_method(method), pattern, handler);
     }
 
+    pub fn get(&mut self, pattern: &str, handler: fn(&mut HttpRequest, &HttpContext) -> HttpResponse) {
+        self.add_route(HttpMethod::GET, pattern, handler);
+    }
+
+    pub fn post(&mut self, pattern: &str, handler: fn(&mut HttpRequest, &HttpContext) -> HttpResponse) {
+        self.add_route(HttpMethod::POST, pattern, handler);
+    }
+
     pub fn use_middleware(&mut self, middleware: Box<dyn HttpMiddleware + Send + Sync>) {
         self.middlewares.as_mut().unwrap().push(middleware);
     }
