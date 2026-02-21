@@ -1,6 +1,7 @@
 use crate::http_context::HttpContext;
-use crate::http_request::HttpRequest;
+use crate::http_request::{HttpMethod, HttpRequest};
 use crate::http_response::HttpResponse;
+use crate::url_matcher::MatchMethod;
 use crate::middlewares::{HttpMiddleware, RoutingMiddleware};
 use std::io::{Write};
 use std::net::TcpListener;
@@ -50,6 +51,9 @@ impl HttpServer {
                 false
             };
             let mut response = middlewares_chain(&mut req);
+            // if !req.content.is_read {
+            //     let _ = req.content.to_string();
+            // }
             if close_connection {
                 response = response.with_header("Connection", "close");
             }
@@ -93,10 +97,11 @@ impl HttpServer {
 
     pub fn add_route(
         &mut self,
+        method: HttpMethod,
         pattern: &str,
-        handler: fn(&HttpRequest, &HttpContext) -> HttpResponse,
+        handler: fn(&mut HttpRequest, &HttpContext) -> HttpResponse,
     ) {
-        self.routing.as_mut().unwrap().add_route(pattern, handler);
+        self.routing.as_mut().unwrap().add_route(MatchMethod::from_method(method), pattern, handler);
     }
 
     pub fn use_middleware(&mut self, middleware: Box<dyn HttpMiddleware + Send + Sync>) {

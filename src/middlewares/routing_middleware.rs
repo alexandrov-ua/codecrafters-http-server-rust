@@ -1,12 +1,12 @@
 use std::collections::HashMap;
-use super::super::http_request::HttpRequest;
+use super::super::http_request::{HttpRequest};
 use super::super::http_response::{HttpResponse, HttpStatusCode};
-use crate::url_matcher::UrlMatcher;
+use crate::url_matcher::{UrlMatcher, MatchMethod};
 use crate::middlewares::http_middleware::HttpMiddleware;
 use crate::http_context::HttpContext;
 
 pub struct RoutingMiddleware{
-    routes: HashMap<UrlMatcher, fn(&HttpRequest, &HttpContext) -> HttpResponse>,
+    routes: HashMap<UrlMatcher, fn(&mut HttpRequest, &HttpContext) -> HttpResponse>,
 }
 
 impl RoutingMiddleware {
@@ -16,8 +16,8 @@ impl RoutingMiddleware {
         }
     }
 
-    pub fn add_route(&mut self, pattern: &str, handler: fn(&HttpRequest, &HttpContext) -> HttpResponse) {
-        let matcher = UrlMatcher::new(pattern);
+    pub fn add_route(&mut self, method: MatchMethod, pattern: &str, handler: fn(&mut HttpRequest, &HttpContext) -> HttpResponse) {
+        let matcher = UrlMatcher::new(method, pattern);
         self.routes.insert(matcher, handler);
     }
 }
@@ -25,7 +25,7 @@ impl RoutingMiddleware {
 impl HttpMiddleware for RoutingMiddleware {
     fn handle(&self, request: &mut HttpRequest, _: &dyn Fn(&mut HttpRequest) -> HttpResponse) -> HttpResponse {
         for (matcher, handler) in &self.routes {
-            let (matched, params) = matcher.match_url(&request.path);
+            let (matched, params) = matcher.match_url(&request.method, &request.path);
             if matched {
                 let context = HttpContext::new_with_params(params);
                 return handler(request, &context);

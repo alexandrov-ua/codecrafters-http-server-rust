@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Result};
 use std::str::FromStr;
 
-#[derive(EnumString, Debug, PartialEq, Display)]
+#[derive(EnumString, Debug, PartialEq, Display, Hash, Eq)]
 pub enum HttpMethod {
     GET,
     POST,
@@ -11,11 +11,10 @@ pub enum HttpMethod {
     OPTIONS,
 }
 
-#[allow(dead_code)]
 pub struct HttpRequest<'a> {
     pub method: HttpMethod,
     pub path: String,
-    pub qury: String,
+    pub query: String,
     pub http_version: String,
     pub headers: HashMap<String, String>,
     pub content: Box<HttpRequestContent<BufReader<&'a mut dyn Read>>>,
@@ -25,20 +24,16 @@ pub struct HttpRequest<'a> {
 use std::cell::Cell;
 use std::vec;
 
-#[allow(dead_code)]
 pub struct HttpRequestContent<T: BufRead> {
     body: Cell<T>,
     content_length: usize,
-    is_read: bool,
+    pub is_read: bool,
 }
 
-#[allow(dead_code)]
 impl<T: BufRead> HttpRequestContent<T> {
     pub fn to_string(&mut self) -> Result<String> {
-        let mut buf = vec![0; self.content_length];
-        self.body.get_mut().read_exact(&mut buf)?;
-        self.is_read = true;
-        Ok(String::from_utf8(buf).unwrap_or_default())
+        let bytes = self.to_bytes()?;
+        Ok(String::from_utf8_lossy(&bytes).to_string())
     }
 
     pub fn to_bytes(&mut self) -> Result<Vec<u8>> {
@@ -80,7 +75,7 @@ impl<'a> HttpRequest<'a> {
         Ok(HttpRequest {
             method: method,
             path: path,
-            qury: query,
+            query: query,
             http_version: http_version,
             headers: headers,
             content: Box::new(HttpRequestContent {
@@ -137,7 +132,7 @@ mod tests {
         let request = HttpRequest::from_reader(&mut reader).unwrap();
         assert_eq!(request.method, HttpMethod::GET);
         assert_eq!(request.path, "/qwe");
-        assert_eq!(request.qury, "p=1");
+        assert_eq!(request.query, "p=1");
         assert_eq!(request.http_version, "HTTP/1.1");
         assert_eq!(request.headers["Host"], "127.0.0.1:4221");
         assert_eq!(request.headers["User-Agent"], "curl/8.5.0");
@@ -150,7 +145,7 @@ mod tests {
         let request = HttpRequest::from_reader(&mut reader).unwrap();
         assert_eq!(request.method, HttpMethod::POST);
         assert_eq!(request.path, "/api/user");
-        assert_eq!(request.qury, "");
+        assert_eq!(request.query, "");
         assert_eq!(request.http_version, "HTTP/1.1");
         assert_eq!(request.headers["Host"], "127.0.0.1:4221");
         assert_eq!(request.headers["User-Agent"], "curl/8.5.0");
@@ -165,13 +160,13 @@ mod tests {
     }
 
     #[test]
-    fn from_reader_qury_params() {
+    fn from_reader_query_params() {
         let requessst_str = "GET /qwe?p=1&p1=wer&q HTTP/1.1\r\nHost: 127.0.0.1:4221\r\nUser-Agent: curl/8.5.0\r\nAccept: */*\r\n\r\n";
         let mut reader = Cursor::new(requessst_str.as_bytes());
         let request = HttpRequest::from_reader(&mut reader).unwrap();
         assert_eq!(request.method, HttpMethod::GET);
         assert_eq!(request.path, "/qwe");
-        assert_eq!(request.qury, "p=1&p1=wer&q");
+        assert_eq!(request.query, "p=1&p1=wer&q");
         assert_eq!(request.query_params["p"], "1");
         assert_eq!(request.query_params["p1"], "wer");
         assert_eq!(request.query_params["q"], "");

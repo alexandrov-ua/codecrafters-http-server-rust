@@ -1,7 +1,7 @@
 use crate::http_request::{HttpRequest, HttpMethod};
 use crate::http_response::HttpResponse;
 use crate::middlewares::http_middleware::HttpMiddleware;
-use crate::url_matcher::UrlMatcher;
+use crate::url_matcher::{MatchMethod, UrlMatcher};
 
 pub struct StaticFilesMiddleware {
     base_path: String,
@@ -13,7 +13,7 @@ impl StaticFilesMiddleware {
         let pattern = format!("{}/{{file_path*}}", base_url);
         StaticFilesMiddleware {
             base_path: base_path.to_string(),
-            matcher: UrlMatcher::new(&pattern),
+            matcher: UrlMatcher::new(MatchMethod::ANY, &pattern),
         }
     }
 }
@@ -24,7 +24,7 @@ impl HttpMiddleware for StaticFilesMiddleware {
         request: &mut HttpRequest,
         next: &dyn Fn(&mut HttpRequest) -> HttpResponse,
     ) -> HttpResponse {
-        let (is_matched, params) = self.matcher.match_url(&request.path);
+        let (is_matched, params) = self.matcher.match_url(&request.method, &request.path);
         if !is_matched {
             return next(request);
         }
